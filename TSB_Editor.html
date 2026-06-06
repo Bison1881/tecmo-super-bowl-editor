@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSB Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0b0d14; --surface:#111520; --surface2:#181d2e; --surface3:#1e2438;
+    --border:#2a3050; --border-bright:#3a4570;
+    --gold:#f5b800; --gold-dim:#b88900; --gold-dark:#7a5c00;
+    --red:#e84040; --blue:#4a9eff; --green:#3ddc84;
+    --text:#e8e0cc; --text-dim:#8a8070; --text-muted:#4a4838;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Share Tech Mono',monospace; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px); pointer-events:none; z-index:9999; }
+
+  /* HEADER */
+  .header { background:var(--surface); border-bottom:3px solid var(--gold); padding:0 16px; display:flex; align-items:center; justify-content:space-between; height:54px; position:sticky; top:0; z-index:200; box-shadow:0 0 40px rgba(245,184,0,0.15); gap:12px; }
+  .header-brand { display:flex; flex-direction:column; }
+  .header-title { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:4px; color:var(--gold); text-shadow:0 0 20px rgba(245,184,0,0.6); line-height:1; }
+  .header-sub { font-size:9px; color:var(--text-dim); letter-spacing:3px; text-transform:uppercase; }
+  .header-center { display:flex; align-items:center; gap:10px; flex:1; justify-content:center; }
+  .header-right { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-dim); white-space:nowrap; }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:var(--text-muted); flex-shrink:0; }
+  .status-dot.active { background:var(--gold); box-shadow:0 0 10px var(--gold); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* VIEW TABS */
+  .view-tabs { display:flex; gap:0; border-bottom:none; }
+  .view-tab { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:2px; padding:6px 18px; border:1px solid var(--border); background:none; color:var(--text-muted); cursor:pointer; transition:all 0.1s; margin-right:-1px; }
+  .view-tab:hover { color:var(--text-dim); border-color:var(--border-bright); }
+  .view-tab.active { color:var(--gold); border-color:var(--gold); background:rgba(245,184,0,0.06); z-index:1; }
+
+  /* SEARCH */
+  .header-search { display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); padding:4px 10px; gap:6px; width:240px; }
+  .header-search input { background:none; border:none; outline:none; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; width:100%; }
+  .header-search input::placeholder { color:var(--text-muted); }
+  .header-search:focus-within { border-color:var(--gold); }
+  .search-results { position:absolute; top:54px; left:50%; transform:translateX(-50%); width:420px; background:var(--surface); border:1px solid var(--border-bright); border-top:none; z-index:300; max-height:300px; overflow-y:auto; }
+  .search-result-item { padding:7px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); transition:background 0.1s; font-size:11px; }
+  .search-result-item:hover { background:var(--surface2); }
+  .search-result-team { color:var(--text-muted); width:110px; flex-shrink:0; font-size:10px; letter-spacing:1px; }
+  .search-result-pos { color:var(--gold); width:36px; font-size:10px; }
+  .search-result-name { color:var(--text); flex:1; }
+  .search-result-num { color:var(--text-muted); font-size:10px; }
+
+  /* ACTION BAR */
+  .action-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 16px; display:flex; align-items:center; gap:8px; height:38px; position:sticky; top:54px; z-index:199; }
+  .btn { font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; padding:5px 14px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); cursor:pointer; transition:all 0.15s; }
+  .btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); background:rgba(245,184,0,0.05); }
+  .btn.primary { border-color:var(--gold); color:var(--gold); background:rgba(245,184,0,0.08); }
+  .btn.primary:hover { background:rgba(245,184,0,0.15); }
+  .btn:disabled { opacity:0.3; cursor:default; }
+  .btn-sm { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:1px; padding:3px 10px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+  .btn-sm:hover:not(:disabled) { border-color:var(--text-dim); color:var(--text-dim); }
+  .btn-sm:disabled { opacity:0.3; cursor:default; }
+  .action-sep { width:1px; height:18px; background:var(--border); flex-shrink:0; margin:0 2px; }
+  .action-clip { font-size:10px; color:var(--gold); letter-spacing:1px; white-space:nowrap; }
+
+  /* LAYOUT */
+  .app { display:flex; height:calc(100vh - 92px); }
+
+  /* SIDEBAR */
+  .sidebar { width:190px; min-width:190px; background:var(--surface); border-right:1px solid var(--border); overflow-y:auto; padding:10px 0; transition:width 0.2s, min-width 0.2s; flex-shrink:0; }
+  .sidebar.collapsed { width:30px; min-width:30px; overflow:hidden; }
+  .sidebar.collapsed .conf-label,.sidebar.collapsed .div-label,.sidebar.collapsed .team-btn { display:none; }
+  .sidebar-toggle { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:center; width:100%; height:26px; background:var(--surface2); border:none; border-bottom:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-size:10px; transition:color 0.1s; font-family:'Share Tech Mono',monospace; }
+  .sidebar-toggle:hover { color:var(--gold); }
+  .conf-label { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:3px; color:var(--gold-dim); padding:14px 14px 4px; }
+  .conf-label:not(:first-of-type) { margin-top:4px; border-top:1px solid var(--border); }
+  .div-label { font-size:9px; letter-spacing:2px; color:var(--text-muted); padding:6px 14px 3px; text-transform:uppercase; }
+  .team-btn { display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-dim); font-family:'Share Tech Mono',monospace; font-size:11px; padding:6px 14px; cursor:pointer; transition:all 0.1s; letter-spacing:1px; }
+  .team-btn:hover { background:var(--surface2); color:var(--text); }
+  .team-btn.active { background:var(--surface3); color:var(--gold); border-left:2px solid var(--gold); }
+
+  /* MAIN */
+  .main { flex:1; overflow-y:auto; padding:18px 22px; background:var(--bg); min-width:0; }
+
+  /* DROPZONE */
+  .dropzone { border:2px dashed var(--border-bright); padding:60px 40px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--surface); margin:40px auto; max-width:580px; }
+  .dropzone:hover, .dropzone.drag-over { border-color:var(--gold); background:rgba(245,184,0,0.03); box-shadow:0 0 50px rgba(245,184,0,0.08); }
+  .dropzone-icon { font-size:44px; margin-bottom:14px; opacity:0.4; }
+  .dropzone h2 { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:5px; color:var(--text); margin-bottom:8px; }
+  .dropzone .drop-hint { color:var(--gold); font-size:12px; line-height:1.9; }
+  .dropzone .drop-sub { color:var(--text-muted); font-size:10px; margin-top:8px; letter-spacing:1px; }
+
+  /* TEAM PANEL */
+  .team-panel { animation:fadein 0.15s ease; }
+  @keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+  .team-header { display:flex; align-items:baseline; gap:14px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .team-name { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:5px; color:var(--gold); text-shadow:0 0 30px rgba(245,184,0,0.3); }
+  .team-conf { font-size:10px; color:var(--text-muted); letter-spacing:2px; }
+  .section-label { font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:4px; color:var(--text-muted); margin:18px 0 6px; display:flex; align-items:center; gap:10px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* BULK BAR */
+  .bulk-bar { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface2); border:1px solid var(--border); margin-bottom:6px; flex-wrap:wrap; }
+  .bulk-bar label { font-size:10px; color:var(--text-muted); letter-spacing:1px; }
+  .bulk-sel { background:var(--surface3); border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; padding:2px 6px; outline:none; cursor:pointer; }
+  .bulk-sel:focus { border-color:var(--gold-dim); }
+  .bulk-num { background:var(--surface3); border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; padding:2px 5px; outline:none; width:46px; text-align:center; }
+  .bulk-num:focus { border-color:var(--gold-dim); }
+  .btn-apply { font-family:'Bebas Neue',sans-serif; font-size:11px; letter-spacing:1px; padding:3px 10px; border:1px solid var(--gold-dim); background:rgba(245,184,0,0.06); color:var(--gold-dim); cursor:pointer; transition:all 0.1s; }
+  .btn-apply:hover { background:rgba(245,184,0,0.14); color:var(--gold); }
+
+  /* TABLE */
+  .ptable { width:100%; border-collapse:collapse; margin-bottom:4px; font-size:11px; }
+  .ptable th { font-size:9px; letter-spacing:2px; color:var(--text-muted); text-align:left; padding:3px 5px; border-bottom:1px solid var(--border); font-weight:400; white-space:nowrap; font-family:'Bebas Neue',sans-serif; }
+  .ptable th.ac { text-align:center; }
+  .ptable tr.pr { border-bottom:1px solid rgba(42,48,80,0.5); transition:background 0.1s; }
+  .ptable tr.pr:hover { background:var(--surface2); }
+  .ptable td { padding:2px 5px; vertical-align:middle; }
+
+  /* INPUTS */
+  .ci { background:transparent; border:none; border-bottom:1px solid transparent; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; outline:none; padding:2px 0; transition:all 0.1s; }
+  .ci:focus { background:rgba(245,184,0,0.07); border-bottom:1px solid var(--gold-dim); color:var(--gold); box-shadow:0 0 0 2px rgba(245,184,0,0.1); }
+  .ci.name { width:80px; text-transform:uppercase; }
+  .ci.first { width:14px; text-transform:uppercase; text-align:center; }
+  .ci.num { width:30px; text-align:center; }
+
+  /* STAT INPUT */
+  .sc { display:flex; align-items:center; }
+  .si { background:transparent; border:none; border-bottom:1px solid transparent; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:12px; font-weight:500; width:30px; text-align:center; outline:none; padding:2px; -moz-appearance:textfield; transition:all 0.1s; }
+  .si::-webkit-outer-spin-button, .si::-webkit-inner-spin-button { -webkit-appearance:none; }
+  .si:focus { background:rgba(245,184,0,0.08); border-bottom:1px solid var(--gold); color:var(--gold); box-shadow:0 0 0 2px rgba(245,184,0,0.12); }
+  .sb { height:3px; width:26px; background:var(--border); margin-left:3px; overflow:hidden; }
+  .sbf { height:100%; transition:width 0.2s; }
+
+  /* ROW CTRL */
+  .rc { display:flex; align-items:center; gap:2px; }
+  .mb { background:none; border:1px solid var(--border); color:var(--text-muted); width:16px; height:16px; cursor:pointer; font-size:8px; display:flex; align-items:center; justify-content:center; transition:all 0.1s; flex-shrink:0; }
+  .mb:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); }
+  .mb:disabled { opacity:0.2; cursor:default; }
+  .cb { background:none; border:1px solid var(--border); color:var(--text-muted); width:16px; height:16px; cursor:pointer; font-size:8px; display:flex; align-items:center; justify-content:center; transition:all 0.1s; flex-shrink:0; }
+  .cb:hover { border-color:var(--gold-dim); color:var(--gold-dim); }
+  .pb { background:none; border:1px solid var(--border); color:var(--text-muted); width:16px; height:16px; cursor:pointer; font-size:8px; display:flex; align-items:center; justify-content:center; transition:all 0.1s; flex-shrink:0; }
+  .pb:hover:not(:disabled) { border-color:var(--blue); color:var(--blue); }
+  .pb:disabled { opacity:0.2; cursor:default; }
+  .idx { display:inline-block; font-size:9px; color:var(--text-muted); width:12px; text-align:right; }
+
+  /* COMPARE */
+  .compare-layout { display:flex; height:100%; overflow:hidden; }
+  .compare-pane { flex:1; overflow-y:auto; padding:14px 18px; border-right:1px solid var(--border); }
+  .compare-pane:last-child { border-right:none; }
+  .cmp-sel { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; padding:4px 8px; outline:none; cursor:pointer; width:100%; margin-bottom:10px; }
+  .cmp-sel:focus { border-color:var(--gold); }
+
+  /* NO ROM / TOAST */
+  .no-rom { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted); font-size:11px; letter-spacing:2px; gap:10px; }
+  .no-rom-icon { font-size:40px; opacity:0.2; }
+  .toast { position:fixed; bottom:22px; right:22px; background:var(--surface2); border:1px solid var(--gold); color:var(--gold); font-size:11px; letter-spacing:1px; padding:9px 16px; box-shadow:0 0 30px rgba(245,184,0,0.15); z-index:1000; animation:toastin 0.2s ease; }
+  .toast.error { border-color:var(--red); color:var(--red); }
+  .toast.warn { border-color:var(--gold-dim); color:var(--gold-dim); }
+  @keyframes toastin { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  ::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); } ::-webkit-scrollbar-thumb:hover { background:var(--border-bright); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useMemo, useCallback } = React;
+
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const SCALE = [6,13,19,25,31,38,44,50,56,63,69,75,81,88,94,100];
+const SCALE_INV = Object.fromEntries(SCALE.map((v,i)=>[v,i]));
+const ABILITY_OFFSET = 0x3010;
+const HEADER = 16;
+
+const TEAMS_STRUCTURE = {
+  AFC: {
+    East:  ['BUF BILLS','IND COLTS','MIA DOLPHINS','NE PATRIOTS','NYJ JETS'],
+    Central:['CIN BENGALS','CLE BROWNS','HOU OILERS','PIT STEELERS'],
+    West:  ['DEN BRONCOS','KC CHIEFS','LAR RAIDERS','SD CHARGERS','SEA SEAHAWKS'],
+  },
+  NFC: {
+    East:  ['WAS REDSKINS','NYG GIANTS','PHI EAGLES','PHX CARDINALS','DAL COWBOYS'],
+    Central:['CHI BEARS','DET LIONS','GB PACKERS','MIN VIKINGS','TB BUCCANEERS'],
+    West:  ['SF 49ERS','LA RAMS','NO SAINTS','ATL FALCONS'],
+  }
+};
+
+const ALL_TEAMS = [
+  'BUF BILLS','IND COLTS','MIA DOLPHINS','NE PATRIOTS','NYJ JETS',
+  'CIN BENGALS','CLE BROWNS','HOU OILERS','PIT STEELERS',
+  'DEN BRONCOS','KC CHIEFS','LAR RAIDERS','SD CHARGERS','SEA SEAHAWKS',
+  'WAS REDSKINS','NYG GIANTS','PHI EAGLES','PHX CARDINALS','DAL COWBOYS',
+  'CHI BEARS','DET LIONS','GB PACKERS','MIN VIKINGS','TB BUCCANEERS',
+  'SF 49ERS','LA RAMS','NO SAINTS','ATL FALCONS'
+];
+
+const TEAM_CONF = {};
+Object.entries(TEAMS_STRUCTURE).forEach(([conf, divs]) =>
+  Object.values(divs).flat().forEach(t => { TEAM_CONF[t] = conf; })
+);
+
+// Player slot definitions: [position_label, nibble_count, [attr_names]]
+const SLOTS = [
+  ['QB1', 10, ['RP','RS','MS','HP','FACE','BODY','PS','PC','PA','APB']],
+  ['QB2', 10, ['RP','RS','MS','HP','FACE','BODY','PS','PC','PA','APB']],
+  ['RB1',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['RB2',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['RB3',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['RB4',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['WR1',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['WR2',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['WR3',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['WR4',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['TE1',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['TE2',  8, ['RP','RS','MS','HP','FACE','BODY','BC','REC']],
+  ['K',    8, ['RP','RS','MS','HP','FACE','BODY','KA','AKB']],
+  ['P',    8, ['RP','RS','MS','HP','FACE','BODY','KA','AKB']],
+  ['C',    6, ['RP','RS','MS','HP','FACE','BODY']],
+  ['LG',   6, ['RP','RS','MS','HP','FACE','BODY']],
+  ['RG',   6, ['RP','RS','MS','HP','FACE','BODY']],
+  ['LT',   6, ['RP','RS','MS','HP','FACE','BODY']],
+  ['RT',   6, ['RP','RS','MS','HP','FACE','BODY']],
+  ['RE',   8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['NT',   8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['LE',   8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['ROLB', 8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['RILB', 8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['LILB', 8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['LOLB', 8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['RCB',  8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['LCB',  8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['FS',   8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+  ['SS',   8, ['RP','RS','MS','HP','FACE','BODY','PI','QK']],
+];
+
+// Slot nibble start positions
+const SLOT_STARTS = [];
+let _ns = 0;
+for (const [,n] of SLOTS) { SLOT_STARTS.push(_ns); _ns += n; }
+
+// Position groups for display
+const GROUPS = [
+  { label:'OFFENSE', slots:['QB1','QB2','RB1','RB2','RB3','RB4','WR1','WR2','WR3','WR4','TE1','TE2','K','P'] },
+  { label:'O-LINE',  slots:['C','LG','RG','LT','RT'] },
+  { label:'DEFENSE', slots:['RE','NT','LE','ROLB','RILB','LILB','LOLB','RCB','LCB','FS','SS'] },
+];
+
+// Stat definitions per position group (shown stats, excluding FACE/BODY/RP shared)
+const STAT_DEFS = {
+  QB:   ['PS','PC','PA','APB'],
+  SKILL:['RS','MS','HP','BC','REC'],
+  K:    ['KA','AKB'],
+  OL:   ['MS','HP'],
+  DEF:  ['RS','MS','HP','PI'],
+};
+
+const getStatType = pos => {
+  if (['QB1','QB2'].includes(pos)) return 'QB';
+  if (['K','P'].includes(pos)) return 'K';
+  if (['C','LG','RG','LT','RT'].includes(pos)) return 'OL';
+  if (['RE','NT','LE','ROLB','RILB','LILB','LOLB','RCB','LCB','FS','SS'].includes(pos)) return 'DEF';
+  return 'SKILL';
+};
+
+// ── ROM IO ────────────────────────────────────────────────────────────────────
+const nibbleToVal = n => SCALE[n & 0xF];
+const valToNibble = v => {
+  const idx = SCALE_INV[v];
+  return idx !== undefined ? idx : SCALE.reduce((bi,sv,i) => Math.abs(sv-v) < Math.abs(SCALE[bi]-v) ? i : bi, 0);
+};
+
+const readTeamAbilities = (rom, teamIdx) => {
+  const base = ABILITY_OFFSET + teamIdx * 117;
+  const nibs = [];
+  for (let i = 0; i < 117; i++) {
+    nibs.push((rom[base+i] >> 4) & 0xF);
+    nibs.push(rom[base+i] & 0xF);
+  }
+  return SLOTS.map(([pos, count, attrs], si) => {
+    const start = SLOT_STARTS[si];
+    const vals = {};
+    attrs.forEach((a, ai) => { vals[a] = SCALE[nibs[start+ai]]; });
+    return { pos, attrs: vals };
+  });
+};
+
+const writeTeamAbilities = (romBuffer, teamIdx, players) => {
+  const arr = new Uint8Array(romBuffer);
+  const base = ABILITY_OFFSET + teamIdx * 117;
+  // Build full nibble array
+  const nibs = new Array(234).fill(0);
+  players.forEach((p, si) => {
+    const [,, attrNames] = SLOTS[si];
+    const start = SLOT_STARTS[si];
+    attrNames.forEach((a, ai) => {
+      nibs[start+ai] = valToNibble(p.attrs[a] || 6);
+    });
+  });
+  // Pack nibbles into bytes
+  for (let i = 0; i < 117; i++) {
+    arr[base+i] = (nibs[i*2] << 4) | (nibs[i*2+1] & 0xF);
+  }
+  return arr.buffer;
+};
+
+// Name reading
+const readPlayerName = (rom, teamIdx, slotIdx) => {
+  // Name pointer table: team i at file offset 0x10 + i*2, each is ptr to 30 2-byte pointers
+  const teamPtrOffset = HEADER + teamIdx * 2;
+  const lo = rom[teamPtrOffset], hi = rom[teamPtrOffset+1];
+  const teamNameBase = (hi << 8 | lo) - 0x8000 + HEADER;
+  // Each player gets 2 bytes in this block
+  const plo = rom[teamNameBase + slotIdx*2], phi = rom[teamNameBase + slotIdx*2 + 1];
+  const playerOffset = (phi << 8 | plo) - 0x8000 + HEADER;
+  if (playerOffset < HEADER || playerOffset >= rom.length) return { jersey: 0, first:'?', last:'?' };
+  const jerseyByte = rom[playerOffset];
+  const jersey = ((jerseyByte >> 4) * 10) + (jerseyByte & 0xF);
+  let pos = playerOffset + 1;
+  let first = '';
+  while (pos < rom.length && rom[pos] >= 0x61 && rom[pos] <= 0x7A) { first += String.fromCharCode(rom[pos]); pos++; }
+  let last = '';
+  while (pos < rom.length && rom[pos] >= 0x41 && rom[pos] <= 0x5A) { last += String.fromCharCode(rom[pos]); pos++; }
+  return { jersey, first: first || '?', last };
+};
+
+const writePlayerName = (romBuffer, teamIdx, slotIdx, first, last, jersey) => {
+  const arr = new Uint8Array(romBuffer);
+  const rom = arr;
+  const teamPtrOffset = HEADER + teamIdx * 2;
+  const lo = rom[teamPtrOffset], hi = rom[teamPtrOffset+1];
+  const teamNameBase = (hi << 8 | lo) - 0x8000 + HEADER;
+  const plo = rom[teamNameBase + slotIdx*2], phi = rom[teamNameBase + slotIdx*2 + 1];
+  const playerOffset = (phi << 8 | plo) - 0x8000 + HEADER;
+  if (playerOffset < HEADER || playerOffset >= rom.length) return arr.buffer;
+
+  // Calculate slot size from next player's offset (or estimate if last slot)
+  let slotSize = 20; // safe default
+  if (slotIdx < 29) {
+    const nlo = rom[teamNameBase + (slotIdx+1)*2], nhi = rom[teamNameBase + (slotIdx+1)*2 + 1];
+    const nextOffset = (nhi << 8 | nlo) - 0x8000 + HEADER;
+    if (nextOffset > playerOffset && nextOffset - playerOffset < 50) {
+      slotSize = nextOffset - playerOffset;
+    }
+  }
+
+  // Write jersey (BCD)
+  const j = Math.max(0, Math.min(99, jersey));
+  arr[playerOffset] = ((Math.floor(j/10)) << 4) | (j % 10);
+
+  // Write first name (lowercase) + last name (uppercase)
+  let pos = playerOffset + 1;
+  const fn = (first || '').toLowerCase().replace(/[^a-z]/g,'').slice(0, slotSize - 2);
+  for (let i = 0; i < fn.length; i++) arr[pos++] = fn.charCodeAt(i);
+  const ln = (last || '').toUpperCase().replace(/[^A-Z]/g,'').slice(0, slotSize - 1 - fn.length);
+  for (let i = 0; i < ln.length; i++) arr[pos++] = ln.charCodeAt(i);
+
+  // Pad remaining bytes in slot with 0x20 (space) so old name chars don't bleed through
+  const slotEnd = playerOffset + slotSize;
+  while (pos < slotEnd && pos < arr.length) { arr[pos++] = 0x20; }
+
+  return arr.buffer;
+};
+
+const readTeam = (romBuffer, teamIdx) => {
+  const rom = new Uint8Array(romBuffer);
+  const abilities = readTeamAbilities(rom, teamIdx);
+  const players = abilities.map((p, si) => {
+    const name = readPlayerName(rom, teamIdx, si);
+    return { ...p, ...name, slotIdx: si };
+  });
+  return players;
+};
+
+// ── SMALL COMPONENTS ──────────────────────────────────────────────────────────
+const statColor = v => v>=88?'#f5b800':v>=69?'#3ddc84':v>=44?'#4a9eff':v>=25?'#e89040':'#e84040';
+
+const StatCell = ({value, onChange, min=6, max=100}) => {
+  const closest = SCALE.reduce((b,v) => Math.abs(v-value)<Math.abs(b-value)?v:b, SCALE[0]);
+  return (
+    <div className="sc">
+      <input className="si" type="number" value={value}
+        onChange={e=>{
+          const n=parseInt(e.target.value)||min;
+          const snapped=SCALE.reduce((b,v)=>Math.abs(v-n)<Math.abs(b-n)?v:b,SCALE[0]);
+          onChange(snapped);
+        }} />
+      <div className="sb"><div className="sbf" style={{width:`${(SCALE.indexOf(closest)/15)*100}%`,background:statColor(closest)}} /></div>
+    </div>
+  );
+};
+
+const RawInput = ({value, onChange, width=32}) => (
+  <input className="ci num" type="number" min={0} max={255} style={{width}}
+    value={value} onChange={e=>onChange(Math.max(0,Math.min(255,parseInt(e.target.value)||0)))} />
+);
+
+// ── PLAYER ROW ────────────────────────────────────────────────────────────────
+const PlayerRow = ({player, idx, onUpdate, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onCopy, onPaste, canPaste}) => {
+  const upd = (f,v) => onUpdate({...player,[f]:v});
+  const updA = (a,v) => onUpdate({...player, attrs:{...player.attrs,[a]:v}});
+  const statType = getStatType(player.pos);
+  const shownStats = STAT_DEFS[statType];
+
+  return (
+    <tr className="pr">
+      <td>
+        <div className="rc">
+          <span className="idx">{idx+1}</span>
+          <button className="mb" onClick={onMoveUp} disabled={!canMoveUp}>▲</button>
+          <button className="mb" onClick={onMoveDown} disabled={!canMoveDown}>▼</button>
+          <button className="cb" onClick={onCopy} title="Copy">C</button>
+          <button className="pb" onClick={onPaste} disabled={!canPaste} title="Paste">P</button>
+        </div>
+      </td>
+      <td style={{color:'var(--gold)',fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,width:40}}>{player.pos}</td>
+      <td><input className="ci" style={{width:60,textTransform:'lowercase'}} maxLength={10} value={player.first||''} onFocus={e=>e.target.select()} onChange={e=>upd('first',e.target.value.toLowerCase().replace(/[^a-z.]/g,''))} /></td>
+      <td><input className="ci name" maxLength={12} value={player.last} onChange={e=>upd('last',e.target.value.toUpperCase())} /></td>
+      <td><input className="ci num" type="number" min={0} max={99} value={player.jersey} onChange={e=>upd('jersey',Math.max(0,Math.min(99,parseInt(e.target.value)||0)))} /></td>
+      {/* Shared stats always shown: RP, RS, MS, HP */}
+      <td><StatCell value={player.attrs.RP||6} onChange={v=>updA('RP',v)} /></td>
+      <td><StatCell value={player.attrs.RS||6} onChange={v=>updA('RS',v)} /></td>
+      <td><StatCell value={player.attrs.MS||6} onChange={v=>updA('MS',v)} /></td>
+      <td><StatCell value={player.attrs.HP||6} onChange={v=>updA('HP',v)} /></td>
+      {/* Position-specific stats */}
+      {statType==='QB'&&<>
+        <td><StatCell value={player.attrs.PS||6} onChange={v=>updA('PS',v)} /></td>
+        <td><StatCell value={player.attrs.PC||6} onChange={v=>updA('PC',v)} /></td>
+        <td><StatCell value={player.attrs.PA||6} onChange={v=>updA('PA',v)} /></td>
+        <td><StatCell value={player.attrs.APB||6} onChange={v=>updA('APB',v)} /></td>
+        <td/><td/>
+      </>}
+      {statType==='SKILL'&&<>
+        <td/><td/>
+        <td><StatCell value={player.attrs.BC||6} onChange={v=>updA('BC',v)} /></td>
+        <td><StatCell value={player.attrs.REC||6} onChange={v=>updA('REC',v)} /></td>
+        <td/><td/>
+      </>}
+      {statType==='K'&&<>
+        <td/><td/><td/>
+        <td><StatCell value={player.attrs.KA||6} onChange={v=>updA('KA',v)} /></td>
+        <td><StatCell value={player.attrs.AKB||6} onChange={v=>updA('AKB',v)} /></td>
+        <td/>
+      </>}
+      {statType==='OL'&&<>
+        <td/><td/><td/><td/><td/>
+        <td style={{color:'var(--text-muted)',fontSize:10,letterSpacing:1}}>OL</td>
+      </>}
+      {statType==='DEF'&&<>
+        <td/><td/>
+        <td><StatCell value={player.attrs.PI||6} onChange={v=>updA('PI',v)} /></td>
+        <td/><td/>
+        <td style={{color:'var(--text-muted)',fontSize:10,letterSpacing:1}}>DEF</td>
+      </>}
+      <td><RawInput value={player.attrs.FACE||0} onChange={v=>updA('FACE',v)} width={28}/></td>
+      <td><RawInput value={player.attrs.BODY||0} onChange={v=>updA('BODY',v)} width={28}/></td>
+    </tr>
+  );
+};
+
+// ── PLAYER TABLE ──────────────────────────────────────────────────────────────
+const PlayerTable = ({players, groupSlots, onUpdate, onMove, copiedPlayer, onCopy, onPaste}) => {
+  const [bulkStat, setBulkStat] = useState('MS');
+  const [bulkVal, setBulkVal] = useState(50);
+  const groupPlayers = players.filter(p => groupSlots.includes(p.pos));
+
+  // Determine available bulk stats for this group
+  const types = [...new Set(groupSlots.map(getStatType))];
+  const allStats = [...new Set(types.flatMap(t=>STAT_DEFS[t]))];
+
+  return (
+    <div>
+      <div className="bulk-bar">
+        <label>BULK:</label>
+        <select className="bulk-sel" value={bulkStat} onChange={e=>setBulkStat(e.target.value)}>
+          {['RP','RS','MS','HP',...allStats].filter((v,i,a)=>a.indexOf(v)===i).map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+        <label>→</label>
+        <select className="bulk-sel" value={bulkVal} onChange={e=>setBulkVal(parseInt(e.target.value))}>
+          {SCALE.map(v=><option key={v} value={v}>{v}</option>)}
+        </select>
+        <button className="btn-apply" onClick={()=>groupPlayers.forEach(p=>{
+          if(p.attrs[bulkStat]!==undefined) onUpdate(p.slotIdx,{...p,attrs:{...p.attrs,[bulkStat]:bulkVal}});
+        })}>APPLY</button>
+      </div>
+      <table className="ptable">
+        <thead><tr>
+          <th style={{width:78}}></th>
+          <th style={{width:40}}>POS</th>
+          <th style={{width:14}}>FIRST</th>
+          <th>LAST NAME</th>
+          <th style={{width:32}}>#</th>
+          <th className="ac" style={{width:68}}>RP</th>
+          <th className="ac" style={{width:68}}>RS</th>
+          <th className="ac" style={{width:68}}>MS</th>
+          <th className="ac" style={{width:68}}>HP</th>
+          <th className="ac" style={{width:68}}>PS/BC/KA/PI</th>
+          <th className="ac" style={{width:68}}>PC/REC/AKB</th>
+          <th className="ac" style={{width:68}}>PA</th>
+          <th className="ac" style={{width:68}}>APB</th>
+          <th style={{width:20}}></th>
+          <th style={{width:20}}></th>
+          <th style={{width:32}}>FACE</th>
+          <th style={{width:32}}>BODY</th>
+        </tr></thead>
+        <tbody>
+          {groupPlayers.map((p,i)=>(
+            <PlayerRow key={p.slotIdx} player={p} idx={i}
+              onUpdate={upd=>onUpdate(p.slotIdx,upd)}
+              onMoveUp={()=>onMove(p.slotIdx,'up')}
+              onMoveDown={()=>onMove(p.slotIdx,'down')}
+              canMoveUp={groupPlayers[0]!==p}
+              canMoveDown={groupPlayers[groupPlayers.length-1]!==p}
+              onCopy={()=>onCopy(p)}
+              onPaste={()=>onPaste(p.slotIdx)}
+              canPaste={!!copiedPlayer}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// ── COMPARE VIEW ──────────────────────────────────────────────────────────────
+const CompareView = ({romBuffer}) => {
+  const [tA, setTA] = useState(ALL_TEAMS[0]);
+  const [tB, setTB] = useState(ALL_TEAMS[1]);
+  const iA = ALL_TEAMS.indexOf(tA), iB = ALL_TEAMS.indexOf(tB);
+  const dataA = useMemo(()=>romBuffer?readTeam(romBuffer,iA):null,[romBuffer,iA]);
+  const dataB = useMemo(()=>romBuffer?readTeam(romBuffer,iB):null,[romBuffer,iB]);
+  if(!romBuffer) return <div className="no-rom"><div className="no-rom-icon">🏈</div><span>LOAD A ROM FIRST</span></div>;
+  const renderRoster = (data) => data ? SLOTS.map(([pos],si)=>{
+    const p = data[si];
+    const st = getStatType(pos);
+    const shown = STAT_DEFS[st];
+    return (
+      <tr key={si} className="pr">
+        <td style={{color:'var(--gold)',fontFamily:"'Bebas Neue'",fontSize:12,width:40}}>{pos}</td>
+        <td style={{fontSize:11}}>{(p.first||'?')[0].toUpperCase()}. {p.last}</td>
+        <td style={{fontSize:10,color:'var(--text-muted)',width:24}}>#{p.jersey}</td>
+        {['RP','RS','MS','HP',...shown].filter((v,i,a)=>a.indexOf(v)===i).map(a=>(
+          <td key={a} style={{textAlign:'center',color:statColor(p.attrs[a]||6),fontSize:11,width:36}}>{p.attrs[a]||'-'}</td>
+        ))}
+      </tr>
+    );
+  }) : null;
+  return (
+    <div className="compare-layout">
+      {[[tA,setTA,dataA],[tB,setTB,dataB]].map(([t,setT,data],idx)=>(
+        <div key={idx} className="compare-pane">
+          <select className="cmp-sel" value={t} onChange={e=>setT(e.target.value)}>
+            {ALL_TEAMS.map(tn=><option key={tn} value={tn}>{tn}</option>)}
+          </select>
+          {data&&<table className="ptable"><tbody>{renderRoster(data)}</tbody></table>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+const MAX_HIST = 30;
+
+const App = () => {
+  const [romBuffer, setRomBuffer] = useState(null);
+  const [romName, setRomName] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [players, setPlayers] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [dirty, setDirty] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [copiedPlayer, setCopiedPlayer] = useState(null);
+  const [view, setView] = useState('edit');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [histIdx, setHistIdx] = useState(-1);
+  const fileRef = useRef();
+  const searchRef = useRef();
+
+  const showToast = (msg, type='ok') => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
+
+  const pushHistory = useCallback((data) => {
+    setHistory(prev => {
+      const base = prev.slice(0, histIdx+1);
+      const next = [...base, JSON.parse(JSON.stringify(data))].slice(-MAX_HIST);
+      setHistIdx(next.length-1);
+      return next;
+    });
+  }, [histIdx]);
+
+  const undo = () => {
+    if(histIdx<=0){showToast('Nothing to undo','warn');return;}
+    const idx=histIdx-1;
+    setPlayers(JSON.parse(JSON.stringify(history[idx])));
+    setHistIdx(idx); setDirty(true);
+  };
+  const redo = () => {
+    if(histIdx>=history.length-1){showToast('Nothing to redo','warn');return;}
+    const idx=histIdx+1;
+    setPlayers(JSON.parse(JSON.stringify(history[idx])));
+    setHistIdx(idx); setDirty(true);
+  };
+
+  const loadRom = file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const buf = e.target.result;
+      if(buf.byteLength < 300000){showToast('File too small','error');return;}
+      const arr = new Uint8Array(buf);
+      if(arr[0]!==0x4E||arr[1]!==0x45||arr[2]!==0x53){showToast('Not a valid NES ROM','error');return;}
+      setRomBuffer(buf); setRomName(file.name);
+      setSelectedTeam(null); setPlayers(null);
+      setDirty(false); setHistory([]); setHistIdx(-1); setCopiedPlayer(null);
+      showToast('ROM loaded');
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const ejectRom = () => {
+    if(dirty&&!window.confirm(`Unsaved changes on ${selectedTeam}.\nEject without saving?`)) return;
+    setRomBuffer(null); setRomName(''); setSelectedTeam(null); setPlayers(null);
+    setDirty(false); setHistory([]); setHistIdx(-1); setCopiedPlayer(null);
+    showToast('ROM ejected');
+  };
+
+  const selectTeam = name => {
+    if(dirty&&!window.confirm(`Unsaved changes. Switch anyway?`)) return;
+    const idx = ALL_TEAMS.indexOf(name);
+    setSelectedTeam(name);
+    const data = readTeam(romBuffer, idx);
+    setPlayers(data);
+    setDirty(false);
+    setHistory([JSON.parse(JSON.stringify(data))]);
+    setHistIdx(0);
+  };
+
+  const updatePlayer = (slotIdx, updated) => {
+    setPlayers(prev => {
+      const next = [...prev];
+      next[slotIdx] = updated;
+      pushHistory(next);
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const movePlayer = (slotIdx, dir) => {
+    const p = players[slotIdx];
+    const group = GROUPS.find(g => g.slots.includes(p.pos));
+    if(!group) return;
+    const groupSlots = players.filter(pl => group.slots.includes(pl.pos));
+    const gi = groupSlots.findIndex(pl => pl.slotIdx === slotIdx);
+    const targetIdx = dir==='up' ? groupSlots[gi-1]?.slotIdx : groupSlots[gi+1]?.slotIdx;
+    if(targetIdx === undefined) return;
+    setPlayers(prev => {
+      const next = [...prev];
+      [next[slotIdx], next[targetIdx]] = [
+        {...next[targetIdx], slotIdx, pos:next[slotIdx].pos},
+        {...next[slotIdx], slotIdx:targetIdx, pos:next[targetIdx].pos}
+      ];
+      pushHistory(next);
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const handleCopy = p => { setCopiedPlayer(JSON.parse(JSON.stringify(p))); showToast(`Copied ${p.first} ${p.last}`); };
+  const handlePaste = slotIdx => {
+    if(!copiedPlayer) return;
+    const target = players[slotIdx];
+    const pasted = {...JSON.parse(JSON.stringify(copiedPlayer)), slotIdx, pos:target.pos};
+    updatePlayer(slotIdx, pasted);
+    showToast(`Pasted onto ${target.pos}`);
+  };
+
+  const saveTeam = () => {
+    if(!romBuffer||!selectedTeam||!players) return;
+    const idx = ALL_TEAMS.indexOf(selectedTeam);
+    let buf = writeTeamAbilities(romBuffer, idx, players);
+    // Write names
+    players.forEach((p, si) => {
+      buf = writePlayerName(buf, idx, si, p.first, p.last, p.jersey);
+    });
+    setRomBuffer(buf); setDirty(false);
+    showToast(`${selectedTeam} saved`);
+  };
+
+  const exportRom = () => {
+    if(!romBuffer) return;
+    const blob = new Blob([romBuffer],{type:'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url;
+    a.download = romName.replace(/\.nes$/i,'')+'_edited.nes';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('ROM exported');
+  };
+
+  const exportCSV = () => {
+    if(!players) return;
+    const rows = [['POS','FIRST','LAST','JERSEY','RP','RS','MS','HP','PS','PC','PA','APB','BC','REC','KA','AKB','PI','QK','FACE','BODY']];
+    players.forEach(p=>rows.push([p.pos,p.first,p.last,p.jersey,...['RP','RS','MS','HP','PS','PC','PA','APB','BC','REC','KA','AKB','PI','QK','FACE','BODY'].map(a=>p.attrs[a]||'')]));
+    const blob = new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url;
+    a.download=`${selectedTeam.replace(/ /g,'_')}_roster.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast('CSV exported');
+  };
+
+  const searchResults = useMemo(()=>{
+    if(!romBuffer||!searchQuery||searchQuery.length<2) return [];
+    const q = searchQuery.toUpperCase();
+    const results = [];
+    for(let ti=0; ti<ALL_TEAMS.length; ti++){
+      const teamPlayers = readTeam(romBuffer, ti);
+      for(const p of teamPlayers){
+        if(p.last.toUpperCase().includes(q)||p.first.toUpperCase().includes(q)){
+          results.push({teamName:ALL_TEAMS[ti], p});
+          if(results.length>=20) return results;
+        }
+      }
+    }
+    return results;
+  },[romBuffer,searchQuery]);
+
+  return (
+    <div>
+      {/* HEADER */}
+      <div className="header">
+        <div className="header-brand">
+          <div className="header-title">TSB EDITOR</div>
+          <div className="header-sub">Tecmo Super Bowl · NES · 1991</div>
+        </div>
+
+        <div className="header-center">
+          <div className="view-tabs">
+            <button className={`view-tab ${view==='edit'?'active':''}`} onClick={()=>setView('edit')}>EDIT</button>
+            <button className={`view-tab ${view==='compare'?'active':''}`} onClick={()=>setView('compare')}>COMPARE</button>
+          </div>
+          <div style={{position:'relative'}}>
+            <div className="header-search" onClick={()=>searchRef.current?.focus()}>
+              <span style={{color:'var(--text-muted)',fontSize:12}}>🔍</span>
+              <input ref={searchRef} placeholder="Search players..." value={searchQuery}
+                onChange={e=>{setSearchQuery(e.target.value);setShowSearch(true);}}
+                onFocus={()=>setShowSearch(true)}
+                onBlur={()=>setTimeout(()=>setShowSearch(false),200)} />
+            </div>
+            {showSearch&&searchResults.length>0&&(
+              <div className="search-results">
+                {searchResults.map((r,i)=>(
+                  <div key={i} className="search-result-item" onMouseDown={()=>{setSearchQuery('');setShowSearch(false);setView('edit');selectTeam(r.teamName);}}>
+                    <span className="search-result-team">{r.teamName}</span>
+                    <span className="search-result-pos">{r.p.pos}</span>
+                    <span className="search-result-name">{(r.p.first||'?')[0].toUpperCase()}. {r.p.last}</span>
+                    <span className="search-result-num">#{r.p.jersey}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="header-right">
+          <div className={`status-dot ${romBuffer?'active':''}`} />
+          <span style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{romBuffer?romName:'NO ROM'}</span>
+          {dirty&&<span style={{color:'var(--gold)'}}>● UNSAVED</span>}
+          {romBuffer&&<button className="btn-sm" onClick={ejectRom} style={{borderColor:'var(--red)',color:'var(--red)',fontSize:11}}>⏏ EJECT</button>}
+        </div>
+      </div>
+
+      {/* ACTION BAR */}
+      <div className="action-bar">
+        <button className="btn primary" onClick={saveTeam} disabled={!selectedTeam||!dirty} style={{opacity:(!selectedTeam||!dirty)?0.4:1}}>SAVE TEAM</button>
+        <button className="btn primary" onClick={exportRom} disabled={!romBuffer} style={{opacity:!romBuffer?0.4:1}}>EXPORT ROM</button>
+        <button className="btn" onClick={exportCSV} disabled={!players} style={{opacity:!players?0.4:1}}>EXPORT CSV</button>
+        <div className="action-sep"/>
+        <button className="btn" onClick={()=>{if(selectedTeam){const idx=ALL_TEAMS.indexOf(selectedTeam);const d=readTeam(romBuffer,idx);setPlayers(d);setDirty(false);setHistory([]);setHistIdx(-1);showToast('Reverted');}}} disabled={!selectedTeam} style={{opacity:!selectedTeam?0.4:1}}>REVERT</button>
+        <div style={{display:'flex',gap:3}}>
+          <button className="btn-sm" onClick={undo} disabled={histIdx<=0}>↩ UNDO</button>
+          <button className="btn-sm" onClick={redo} disabled={histIdx>=history.length-1}>REDO ↪</button>
+        </div>
+        {copiedPlayer&&<><div className="action-sep"/><span className="action-clip">📋 {copiedPlayer.first} {copiedPlayer.last}</span><button className="btn-sm" onClick={()=>setCopiedPlayer(null)} style={{fontSize:10,padding:'2px 6px'}}>CLR</button></>}
+      </div>
+
+      {/* BODY */}
+      {view==='compare'?(
+        <div style={{height:'calc(100vh - 92px)',overflow:'hidden'}}>
+          <CompareView romBuffer={romBuffer}/>
+        </div>
+      ):(
+        <div className="app">
+          {/* SIDEBAR */}
+          <div className={`sidebar ${sidebarCollapsed?'collapsed':''}`}>
+            <button className="sidebar-toggle" onClick={()=>setSidebarCollapsed(c=>!c)}>
+              {sidebarCollapsed?'▶':'◀'}
+            </button>
+            {Object.entries(TEAMS_STRUCTURE).map(([conf,divs])=>(
+              <div key={conf}>
+                <div className="conf-label">{conf}</div>
+                {Object.entries(divs).map(([div,teams])=>(
+                  <div key={div}>
+                    <div className="div-label">{div}</div>
+                    {teams.map(t=>(
+                      <button key={t} className={`team-btn ${selectedTeam===t?'active':''}`}
+                        onClick={()=>romBuffer&&selectTeam(t)} style={{opacity:romBuffer?1:0.4}}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* MAIN */}
+          <div className="main">
+            {!romBuffer?(
+              <div className={`dropzone ${dragOver?'drag-over':''}`}
+                onDrop={e=>{e.preventDefault();setDragOver(false);if(e.dataTransfer.files[0])loadRom(e.dataTransfer.files[0]);}}
+                onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+                onDragLeave={()=>setDragOver(false)}
+                onClick={()=>fileRef.current.click()}>
+                <div className="dropzone-icon">🏈</div>
+                <h2>LOAD ROM</h2>
+                <p className="drop-hint">Drag and drop your ROM here<br/>or click to browse</p>
+                <p className="drop-sub">Tecmo Super Bowl (USA).nes</p>
+                <input ref={fileRef} type="file" accept=".nes" style={{display:'none'}} onChange={e=>{if(e.target.files[0])loadRom(e.target.files[0]);}} />
+              </div>
+            ):!selectedTeam?(
+              <div className="no-rom"><div className="no-rom-icon">🏈</div><span>SELECT A TEAM FROM THE SIDEBAR</span></div>
+            ):players&&(
+              <div className="team-panel">
+                <div className="team-header">
+                  <div className="team-name">{selectedTeam}</div>
+                  <div className="team-conf">{TEAM_CONF[selectedTeam]} · {dirty?'MODIFIED':'UNMODIFIED'}</div>
+                </div>
+                {GROUPS.map(g=>(
+                  <div key={g.label}>
+                    <div className="section-label">{g.label}</div>
+                    <PlayerTable
+                      players={players}
+                      groupSlots={g.slots}
+                      onUpdate={updatePlayer}
+                      onMove={movePlayer}
+                      copiedPlayer={copiedPlayer}
+                      onCopy={handleCopy}
+                      onPaste={handlePaste}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {toast&&<div className={`toast ${toast.type==='error'?'error':toast.type==='warn'?'warn':''}`}>{toast.msg}</div>}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
