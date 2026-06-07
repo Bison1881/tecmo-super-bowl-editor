@@ -7,7 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#0b0d14; --surface:#111520; --surface2:#181d2e; --surface3:#1e2438;
@@ -17,13 +17,13 @@
     --text:#e8e0cc; --text-dim:#8a8070; --text-muted:#4a4838;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--text); font-family:'Share Tech Mono',monospace; min-height:100vh; overflow-x:hidden; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Mono',monospace; min-height:100vh; overflow-x:hidden; }
   body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px); pointer-events:none; z-index:9999; }
 
   /* HEADER */
-  .header { background:var(--surface); border-bottom:3px solid var(--gold); padding:0 16px; display:flex; align-items:center; justify-content:space-between; height:54px; position:sticky; top:0; z-index:200; box-shadow:0 0 40px rgba(245,184,0,0.15); gap:12px; }
+  .header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 16px; display:flex; align-items:center; justify-content:space-between; height:54px; position:sticky; top:0; z-index:200; box-shadow:0 0 40px rgba(245,184,0,0.08); gap:12px; }
   .header-brand { display:flex; flex-direction:column; }
-  .header-title { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:4px; color:var(--gold); text-shadow:0 0 20px rgba(245,184,0,0.6); line-height:1; }
+  .header-title { font-family:'Oswald',sans-serif; font-size:22px; font-weight:700; letter-spacing:3px; color:var(--gold); text-shadow:0 0 20px rgba(245,184,0,0.6); line-height:1; }
   .header-sub { font-size:9px; color:var(--text-dim); letter-spacing:3px; text-transform:uppercase; }
   .header-center { display:flex; align-items:center; gap:10px; flex:1; justify-content:center; }
   .header-right { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-dim); white-space:nowrap; }
@@ -32,14 +32,14 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
   /* VIEW TABS */
-  .view-tabs { display:flex; gap:0; border-bottom:none; }
-  .view-tab { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:2px; padding:6px 18px; border:1px solid var(--border); background:none; color:var(--text-muted); cursor:pointer; transition:all 0.1s; margin-right:-1px; }
-  .view-tab:hover { color:var(--text-dim); border-color:var(--border-bright); }
-  .view-tab.active { color:var(--gold); border-color:var(--gold); background:rgba(245,184,0,0.06); z-index:1; }
+  .view-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:0; }
+  .view-tab { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; border:none; background:none; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.1s; }
+  .view-tab:hover { color:var(--text-dim); }
+  .view-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
 
   /* SEARCH */
   .header-search { display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); padding:4px 10px; gap:6px; width:240px; }
-  .header-search input { background:none; border:none; outline:none; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; width:100%; }
+  .header-search input { background:none; border:none; outline:none; color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:11px; width:100%; }
   .header-search input::placeholder { color:var(--text-muted); }
   .header-search:focus-within { border-color:var(--gold); }
   .search-results { position:absolute; top:54px; left:50%; transform:translateX(-50%); width:420px; background:var(--surface); border:1px solid var(--border-bright); border-top:none; z-index:300; max-height:300px; overflow-y:auto; }
@@ -51,13 +51,13 @@
   .search-result-num { color:var(--text-muted); font-size:10px; }
 
   /* ACTION BAR */
-  .action-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 16px; display:flex; align-items:center; gap:8px; height:38px; position:sticky; top:54px; z-index:199; }
-  .btn { font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; padding:5px 14px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); cursor:pointer; transition:all 0.15s; }
+  .action-bar { background:var(--surface); border-bottom:2px solid var(--gold); padding:0 16px; display:flex; align-items:center; gap:8px; height:40px; position:sticky; top:54px; z-index:199; box-shadow:0 0 20px rgba(245,184,0,0.07); }
+  .btn { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; padding:5px 14px; border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); cursor:pointer; border-radius:2px; transition:all 0.15s; }
   .btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); background:rgba(245,184,0,0.05); }
   .btn.primary { border-color:var(--gold); color:var(--gold); background:rgba(245,184,0,0.08); }
   .btn.primary:hover { background:rgba(245,184,0,0.15); }
   .btn:disabled { opacity:0.3; cursor:default; }
-  .btn-sm { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:1px; padding:3px 10px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+  .btn-sm { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); cursor:pointer; border-radius:2px; transition:all 0.15s; }
   .btn-sm:hover:not(:disabled) { border-color:var(--text-dim); color:var(--text-dim); }
   .btn-sm:disabled { opacity:0.3; cursor:default; }
   .action-sep { width:1px; height:18px; background:var(--border); flex-shrink:0; margin:0 2px; }
@@ -70,12 +70,12 @@
   .sidebar { width:190px; min-width:190px; background:var(--surface); border-right:1px solid var(--border); overflow-y:auto; padding:10px 0; transition:width 0.2s, min-width 0.2s; flex-shrink:0; }
   .sidebar.collapsed { width:30px; min-width:30px; overflow:hidden; }
   .sidebar.collapsed .conf-label,.sidebar.collapsed .div-label,.sidebar.collapsed .team-btn { display:none; }
-  .sidebar-toggle { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:center; width:100%; height:26px; background:var(--surface2); border:none; border-bottom:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-size:10px; transition:color 0.1s; font-family:'Share Tech Mono',monospace; }
+  .sidebar-toggle { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:center; width:100%; height:26px; background:var(--surface2); border:none; border-bottom:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-size:10px; transition:color 0.1s; font-family:'IBM Plex Mono',monospace; }
   .sidebar-toggle:hover { color:var(--gold); }
-  .conf-label { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:3px; color:var(--gold-dim); padding:14px 14px 4px; }
+  .conf-label { font-family:'Oswald',sans-serif; font-size:12px; letter-spacing:3px; color:var(--gold-dim); padding:14px 14px 4px; }
   .conf-label:not(:first-of-type) { margin-top:4px; border-top:1px solid var(--border); }
   .div-label { font-size:9px; letter-spacing:2px; color:var(--text-muted); padding:6px 14px 3px; text-transform:uppercase; }
-  .team-btn { display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-dim); font-family:'Share Tech Mono',monospace; font-size:11px; padding:6px 14px; cursor:pointer; transition:all 0.1s; letter-spacing:1px; }
+  .team-btn { display:block; width:100%; text-align:left; background:none; border:none; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 14px; cursor:pointer; transition:all 0.1s; letter-spacing:1px; }
   .team-btn:hover { background:var(--surface2); color:var(--text); }
   .team-btn.active { background:var(--surface3); color:var(--gold); border-left:2px solid var(--gold); }
 
@@ -86,7 +86,7 @@
   .dropzone { border:2px dashed var(--border-bright); padding:60px 40px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--surface); margin:40px auto; max-width:580px; }
   .dropzone:hover, .dropzone.drag-over { border-color:var(--gold); background:rgba(245,184,0,0.03); box-shadow:0 0 50px rgba(245,184,0,0.08); }
   .dropzone-icon { font-size:44px; margin-bottom:14px; opacity:0.4; }
-  .dropzone h2 { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:5px; color:var(--text); margin-bottom:8px; }
+  .dropzone h2 { font-family:'Oswald',sans-serif; font-size:24px; font-weight:700; letter-spacing:4px; color:var(--text); margin-bottom:8px; }
   .dropzone .drop-hint { color:var(--gold); font-size:12px; line-height:1.9; }
   .dropzone .drop-sub { color:var(--text-muted); font-size:10px; margin-top:8px; letter-spacing:1px; }
 
@@ -94,31 +94,31 @@
   .team-panel { animation:fadein 0.15s ease; }
   @keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
   .team-header { display:flex; align-items:baseline; gap:14px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
-  .team-name { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:5px; color:var(--gold); text-shadow:0 0 30px rgba(245,184,0,0.3); }
+  .team-name { font-family:'Oswald',sans-serif; font-size:28px; font-weight:700; letter-spacing:4px; color:var(--gold); text-shadow:0 0 30px rgba(245,184,0,0.3); }
   .team-conf { font-size:10px; color:var(--text-muted); letter-spacing:2px; }
-  .section-label { font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:4px; color:var(--text-muted); margin:18px 0 6px; display:flex; align-items:center; gap:10px; }
+  .section-label { font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:4px; color:var(--text-muted); margin:18px 0 6px; display:flex; align-items:center; gap:10px; }
   .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
 
   /* BULK BAR */
   .bulk-bar { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface2); border:1px solid var(--border); margin-bottom:6px; flex-wrap:wrap; }
   .bulk-bar label { font-size:10px; color:var(--text-muted); letter-spacing:1px; }
-  .bulk-sel { background:var(--surface3); border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; padding:2px 6px; outline:none; cursor:pointer; }
+  .bulk-sel { background:var(--surface3); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:11px; padding:2px 6px; outline:none; cursor:pointer; }
   .bulk-sel:focus { border-color:var(--gold-dim); }
-  .bulk-num { background:var(--surface3); border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; padding:2px 5px; outline:none; width:46px; text-align:center; }
+  .bulk-num { background:var(--surface3); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:11px; padding:2px 5px; outline:none; width:46px; text-align:center; }
   .bulk-num:focus { border-color:var(--gold-dim); }
-  .btn-apply { font-family:'Bebas Neue',sans-serif; font-size:11px; letter-spacing:1px; padding:3px 10px; border:1px solid var(--gold-dim); background:rgba(245,184,0,0.06); color:var(--gold-dim); cursor:pointer; transition:all 0.1s; }
+  .btn-apply { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; padding:3px 10px; border:1px solid var(--gold-dim); background:rgba(245,184,0,0.06); color:var(--gold-dim); cursor:pointer; transition:all 0.1s; }
   .btn-apply:hover { background:rgba(245,184,0,0.14); color:var(--gold); }
 
   /* TABLE */
   .ptable { width:100%; border-collapse:collapse; margin-bottom:4px; font-size:11px; }
-  .ptable th { font-size:9px; letter-spacing:2px; color:var(--text-muted); text-align:left; padding:3px 5px; border-bottom:1px solid var(--border); font-weight:400; white-space:nowrap; font-family:'Bebas Neue',sans-serif; }
+  .ptable th { font-size:9px; letter-spacing:2px; color:var(--text-muted); text-align:left; padding:3px 5px; border-bottom:1px solid var(--border); font-weight:400; white-space:nowrap; font-family:'Oswald',sans-serif; }
   .ptable th.ac { text-align:center; }
   .ptable tr.pr { border-bottom:1px solid rgba(42,48,80,0.5); transition:background 0.1s; }
   .ptable tr.pr:hover { background:var(--surface2); }
   .ptable td { padding:2px 5px; vertical-align:middle; }
 
   /* INPUTS */
-  .ci { background:transparent; border:none; border-bottom:1px solid transparent; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; outline:none; padding:2px 0; transition:all 0.1s; }
+  .ci { background:transparent; border:none; border-bottom:1px solid transparent; color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:11px; outline:none; padding:2px 0; transition:all 0.1s; }
   .ci:focus { background:rgba(245,184,0,0.07); border-bottom:1px solid var(--gold-dim); color:var(--gold); box-shadow:0 0 0 2px rgba(245,184,0,0.1); }
   .ci.name { width:80px; text-transform:uppercase; }
   .ci.first { width:14px; text-transform:uppercase; text-align:center; }
@@ -126,7 +126,7 @@
 
   /* STAT INPUT */
   .sc { display:flex; align-items:center; }
-  .si { background:transparent; border:none; border-bottom:1px solid transparent; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:12px; font-weight:500; width:30px; text-align:center; outline:none; padding:2px; -moz-appearance:textfield; transition:all 0.1s; }
+  .si { background:transparent; border:none; border-bottom:1px solid transparent; color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:500; width:30px; text-align:center; outline:none; padding:2px; -moz-appearance:textfield; transition:all 0.1s; }
   .si::-webkit-outer-spin-button, .si::-webkit-inner-spin-button { -webkit-appearance:none; }
   .si:focus { background:rgba(245,184,0,0.08); border-bottom:1px solid var(--gold); color:var(--gold); box-shadow:0 0 0 2px rgba(245,184,0,0.12); }
   .sb { height:3px; width:26px; background:var(--border); margin-left:3px; overflow:hidden; }
@@ -151,7 +151,7 @@
   .compare-layout { display:flex; height:100%; overflow:hidden; }
   .compare-pane { flex:1; overflow-y:auto; padding:14px 18px; border-right:1px solid var(--border); }
   .compare-pane:last-child { border-right:none; }
-  .cmp-sel { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; padding:4px 8px; outline:none; cursor:pointer; width:100%; margin-bottom:10px; }
+  .cmp-sel { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:11px; padding:4px 8px; outline:none; cursor:pointer; width:100%; margin-bottom:10px; }
   .cmp-sel:focus { border-color:var(--gold); }
 
   /* NO ROM / TOAST */
@@ -433,7 +433,7 @@ const PlayerRow = ({player, idx, onUpdate, onMoveUp, onMoveDown, canMoveUp, canM
           {canPaste&&!isSource&&<button className="pb" onClick={onPaste} title="Paste here">P</button>}
         </div>
       </td>
-      <td style={{color:'var(--gold)',fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,width:40}}>{player.pos}</td>
+      <td style={{color:'var(--gold)',fontFamily:"'Oswald'",fontSize:13,letterSpacing:1,width:40}}>{player.pos}</td>
       <td><input className="ci" style={{width:60,textTransform:'lowercase'}} maxLength={10} value={player.first||''} onFocus={e=>e.target.select()} onChange={e=>upd('first',e.target.value.toLowerCase().replace(/[^a-z.]/g,''))} /></td>
       <td><input className="ci name" maxLength={12} value={player.last} onChange={e=>upd('last',e.target.value.toUpperCase())} /></td>
       <td><input className="ci num" type="number" min={0} max={99} value={player.jersey} onChange={e=>upd('jersey',Math.max(0,Math.min(99,parseInt(e.target.value)||0)))} /></td>
@@ -559,7 +559,7 @@ const CompareView = ({romBuffer}) => {
     const shown = STAT_DEFS[st];
     return (
       <tr key={si} className="pr">
-        <td style={{color:'var(--gold)',fontFamily:"'Bebas Neue'",fontSize:12,width:40}}>{pos}</td>
+        <td style={{color:'var(--gold)',fontFamily:"'Oswald'",fontSize:12,width:40}}>{pos}</td>
         <td style={{fontSize:11}}>{p.first ? p.first[0].toUpperCase()+'.' : ''} {p.last}</td>
         <td style={{fontSize:10,color:'var(--text-muted)',width:24}}>#{p.jersey}</td>
         {['RP','RS','MS','HP',...shown].filter((v,i,a)=>a.indexOf(v)===i).map(a=>(
@@ -825,7 +825,7 @@ const App = () => {
         </div>
 
         <div className="header-center">
-          <div className="view-tabs">
+          <div className="view-tabs" style={{borderBottom:'none',marginBottom:0}}>
             <button className={`view-tab ${view==='edit'?'active':''}`} onClick={()=>setView('edit')}>EDIT</button>
             <button className={`view-tab ${view==='compare'?'active':''}`} onClick={()=>setView('compare')}>COMPARE</button>
           </div>
@@ -854,7 +854,7 @@ const App = () => {
 
         <div className="header-right">
           <div className={`status-dot ${romBuffer?'active':''}`} />
-          <span style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{romBuffer?romName:'NO ROM'}</span>
+          <span style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{romBuffer?romName:'NO ROM LOADED'}</span>
           {dirty&&<span style={{color:'var(--gold)'}}>● UNSAVED</span>}
           {romBuffer&&<button className="btn-sm" onClick={ejectRom} style={{borderColor:'var(--red)',color:'var(--red)',fontSize:11}}>⏏ EJECT</button>}
         </div>
