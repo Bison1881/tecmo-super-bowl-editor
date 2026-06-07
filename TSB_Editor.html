@@ -142,6 +142,9 @@
   .pb { background:none; border:1px solid var(--border); color:var(--text-muted); width:16px; height:16px; cursor:pointer; font-size:8px; display:flex; align-items:center; justify-content:center; transition:all 0.1s; flex-shrink:0; }
   .pb:hover:not(:disabled) { border-color:var(--blue); color:var(--blue); }
   .pb:disabled { opacity:0.2; cursor:default; }
+  .tb { background:none; border:1px solid var(--border); color:var(--text-muted); width:16px; height:16px; cursor:pointer; font-size:8px; display:flex; align-items:center; justify-content:center; transition:all 0.1s; flex-shrink:0; }
+  .tb:hover:not(:disabled) { border-color:var(--green); color:var(--green); }
+  .tb:disabled { opacity:0.2; cursor:default; }
   .idx { display:inline-block; font-size:9px; color:var(--text-muted); width:12px; text-align:right; }
 
   /* COMPARE */
@@ -166,7 +169,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useRef, useMemo, useCallback } = React;
+const { useState, useRef, useMemo } = React;
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SCALE = [6,13,19,25,31,38,44,50,56,63,69,75,81,88,94,100];
@@ -322,7 +325,7 @@ const readPlayerName = (rom, teamIdx, slotIdx) => {
   while (pos < rom.length && rom[pos] >= 0x61 && rom[pos] <= 0x7A) { first += String.fromCharCode(rom[pos]); pos++; }
   let last = '';
   while (pos < rom.length && rom[pos] >= 0x41 && rom[pos] <= 0x5A) { last += String.fromCharCode(rom[pos]); pos++; }
-  return { jersey, first: first || '?', last };
+  return { jersey, first: first || '', last };
 };
 
 const writePlayerName = (romBuffer, teamIdx, slotIdx, first, last, jersey) => {
@@ -335,14 +338,27 @@ const writePlayerName = (romBuffer, teamIdx, slotIdx, first, last, jersey) => {
   const playerOffset = (phi << 8 | plo) - 0x8000 + HEADER;
   if (playerOffset < HEADER || playerOffset >= rom.length) return arr.buffer;
 
-  // Calculate slot size from next player's offset (or estimate if last slot)
-  let slotSize = 20; // safe default
-  if (slotIdx < 29) {
-    const nlo = rom[teamNameBase + (slotIdx+1)*2], nhi = rom[teamNameBase + (slotIdx+1)*2 + 1];
+  // Determine slot size from next player's pointer, or by scanning forward for the next slot
+  let slotSize = 0;
+  for (let nextSlot = slotIdx + 1; nextSlot < 30; nextSlot++) {
+    const nlo = rom[teamNameBase + nextSlot*2], nhi = rom[teamNameBase + nextSlot*2 + 1];
     const nextOffset = (nhi << 8 | nlo) - 0x8000 + HEADER;
     if (nextOffset > playerOffset && nextOffset - playerOffset < 50) {
       slotSize = nextOffset - playerOffset;
+      break;
     }
+  }
+  // Fallback: scan forward from playerOffset until we hit a byte that isn't printable or space,
+  // looking for how many bytes were originally used, capped at 20
+  if (slotSize <= 0) {
+    slotSize = 1; // jersey byte
+    let sp = playerOffset + 1;
+    while (sp < rom.length && sp - playerOffset < 20) {
+      const b = rom[sp];
+      if ((b >= 0x41 && b <= 0x5A) || (b >= 0x61 && b <= 0x7A) || b === 0x20) { slotSize++; sp++; }
+      else break;
+    }
+    if (slotSize < 4) slotSize = 20; // safety
   }
 
   // Write jersey (BCD)
@@ -350,13 +366,15 @@ const writePlayerName = (romBuffer, teamIdx, slotIdx, first, last, jersey) => {
   arr[playerOffset] = ((Math.floor(j/10)) << 4) | (j % 10);
 
   // Write first name (lowercase) + last name (uppercase)
+  // Reserve 1 byte for jersey; remaining bytes split between first + last
+  const maxNameBytes = slotSize - 1;
   let pos = playerOffset + 1;
-  const fn = (first || '').toLowerCase().replace(/[^a-z]/g,'').slice(0, slotSize - 2);
+  const fn = (first || '').toLowerCase().replace(/[^a-z]/g,'').slice(0, Math.max(0, maxNameBytes - 1));
   for (let i = 0; i < fn.length; i++) arr[pos++] = fn.charCodeAt(i);
-  const ln = (last || '').toUpperCase().replace(/[^A-Z]/g,'').slice(0, slotSize - 1 - fn.length);
+  const ln = (last || '').toUpperCase().replace(/[^A-Z]/g,'').slice(0, maxNameBytes - fn.length);
   for (let i = 0; i < ln.length; i++) arr[pos++] = ln.charCodeAt(i);
 
-  // Pad remaining bytes in slot with 0x20 (space) so old name chars don't bleed through
+  // Pad the remainder of the slot with 0x20 so no old characters bleed through
   const slotEnd = playerOffset + slotSize;
   while (pos < slotEnd && pos < arr.length) { arr[pos++] = 0x20; }
 
@@ -397,21 +415,22 @@ const RawInput = ({value, onChange, width=32}) => (
 );
 
 // ── PLAYER ROW ────────────────────────────────────────────────────────────────
-const PlayerRow = ({player, idx, onUpdate, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onCopy, onPaste, canPaste}) => {
+const PlayerRow = ({player, idx, onUpdate, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onCopy, onTrade, onPaste, isSource, canPaste}) => {
   const upd = (f,v) => onUpdate({...player,[f]:v});
   const updA = (a,v) => onUpdate({...player, attrs:{...player.attrs,[a]:v}});
   const statType = getStatType(player.pos);
   const shownStats = STAT_DEFS[statType];
 
   return (
-    <tr className="pr">
+    <tr className="pr" style={isSource?{background:'rgba(245,184,0,0.07)',outline:'1px solid rgba(245,184,0,0.3)'}:{}}>
       <td>
         <div className="rc">
           <span className="idx">{idx+1}</span>
           <button className="mb" onClick={onMoveUp} disabled={!canMoveUp}>▲</button>
           <button className="mb" onClick={onMoveDown} disabled={!canMoveDown}>▼</button>
-          <button className="cb" onClick={onCopy} title="Copy">C</button>
-          <button className="pb" onClick={onPaste} disabled={!canPaste} title="Paste">P</button>
+          <button className="cb" onClick={onCopy} title="Copy (overwrite target)">C</button>
+          <button className="tb" onClick={onTrade} title="Trade (swap with target)">T</button>
+          {canPaste&&!isSource&&<button className="pb" onClick={onPaste} title="Paste here">P</button>}
         </div>
       </td>
       <td style={{color:'var(--gold)',fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,width:40}}>{player.pos}</td>
@@ -460,10 +479,11 @@ const PlayerRow = ({player, idx, onUpdate, onMoveUp, onMoveDown, canMoveUp, canM
 };
 
 // ── PLAYER TABLE ──────────────────────────────────────────────────────────────
-const PlayerTable = ({players, groupSlots, onUpdate, onMove, copiedPlayer, onCopy, onPaste}) => {
+const PlayerTable = ({players, groupSlots, onUpdate, onMove, clipboard, onCopy, onTrade, onPaste}) => {
   const [bulkStat, setBulkStat] = useState('MS');
   const [bulkVal, setBulkVal] = useState(50);
   const groupPlayers = players.filter(p => groupSlots.includes(p.pos));
+  const sourceSlotIdx = clipboard ? clipboard.player.slotIdx : null;
 
   // Determine available bulk stats for this group
   const types = [...new Set(groupSlots.map(getStatType))];
@@ -486,7 +506,7 @@ const PlayerTable = ({players, groupSlots, onUpdate, onMove, copiedPlayer, onCop
       </div>
       <table className="ptable">
         <thead><tr>
-          <th style={{width:78}}></th>
+          <th style={{width:112}}></th>
           <th style={{width:40}}>POS</th>
           <th style={{width:14}}>FIRST</th>
           <th>LAST NAME</th>
@@ -514,7 +534,9 @@ const PlayerTable = ({players, groupSlots, onUpdate, onMove, copiedPlayer, onCop
               canMoveDown={groupPlayers[groupPlayers.length-1]!==p}
               onCopy={()=>onCopy(p)}
               onPaste={()=>onPaste(p.slotIdx)}
-              canPaste={!!copiedPlayer}
+              onTrade={()=>onTrade(p)}
+              isSource={p.slotIdx === sourceSlotIdx}
+              canPaste={!!clipboard}
             />
           ))}
         </tbody>
@@ -538,7 +560,7 @@ const CompareView = ({romBuffer}) => {
     return (
       <tr key={si} className="pr">
         <td style={{color:'var(--gold)',fontFamily:"'Bebas Neue'",fontSize:12,width:40}}>{pos}</td>
-        <td style={{fontSize:11}}>{(p.first||'?')[0].toUpperCase()}. {p.last}</td>
+        <td style={{fontSize:11}}>{p.first ? p.first[0].toUpperCase()+'.' : ''} {p.last}</td>
         <td style={{fontSize:10,color:'var(--text-muted)',width:24}}>#{p.jersey}</td>
         {['RP','RS','MS','HP',...shown].filter((v,i,a)=>a.indexOf(v)===i).map(a=>(
           <td key={a} style={{textAlign:'center',color:statColor(p.attrs[a]||6),fontSize:11,width:36}}>{p.attrs[a]||'-'}</td>
@@ -572,7 +594,7 @@ const App = () => {
   const [toast, setToast] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [copiedPlayer, setCopiedPlayer] = useState(null);
+  const [clipboard, setClipboard] = useState(null); // {player, mode: "copy"|"trade"}
   const [view, setView] = useState('edit');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -583,25 +605,29 @@ const App = () => {
 
   const showToast = (msg, type='ok') => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
 
-  const pushHistory = useCallback((data) => {
+  const histIdxRef = useRef(-1);
+  const pushHistory = (data) => {
     setHistory(prev => {
-      const base = prev.slice(0, histIdx+1);
+      const base = prev.slice(0, histIdxRef.current + 1);
       const next = [...base, JSON.parse(JSON.stringify(data))].slice(-MAX_HIST);
-      setHistIdx(next.length-1);
+      histIdxRef.current = next.length - 1;
+      setHistIdx(next.length - 1);
       return next;
     });
-  }, [histIdx]);
+  };
 
   const undo = () => {
     if(histIdx<=0){showToast('Nothing to undo','warn');return;}
     const idx=histIdx-1;
     setPlayers(JSON.parse(JSON.stringify(history[idx])));
+    histIdxRef.current = idx;
     setHistIdx(idx); setDirty(true);
   };
   const redo = () => {
     if(histIdx>=history.length-1){showToast('Nothing to redo','warn');return;}
     const idx=histIdx+1;
     setPlayers(JSON.parse(JSON.stringify(history[idx])));
+    histIdxRef.current = idx;
     setHistIdx(idx); setDirty(true);
   };
 
@@ -614,7 +640,7 @@ const App = () => {
       if(arr[0]!==0x4E||arr[1]!==0x45||arr[2]!==0x53){showToast('Not a valid NES ROM','error');return;}
       setRomBuffer(buf); setRomName(file.name);
       setSelectedTeam(null); setPlayers(null);
-      setDirty(false); setHistory([]); setHistIdx(-1); setCopiedPlayer(null);
+      setDirty(false); setHistory([]); histIdxRef.current = -1; setHistIdx(-1); setClipboard(null);
       showToast('ROM loaded');
     };
     reader.readAsArrayBuffer(file);
@@ -623,19 +649,29 @@ const App = () => {
   const ejectRom = () => {
     if(dirty&&!window.confirm(`Unsaved changes on ${selectedTeam}.\nEject without saving?`)) return;
     setRomBuffer(null); setRomName(''); setSelectedTeam(null); setPlayers(null);
-    setDirty(false); setHistory([]); setHistIdx(-1); setCopiedPlayer(null);
+    setDirty(false); setHistory([]); histIdxRef.current = -1; setHistIdx(-1); setClipboard(null);
     showToast('ROM ejected');
   };
 
-  const selectTeam = name => {
-    if(dirty&&!window.confirm(`Unsaved changes. Switch anyway?`)) return;
+  const selectTeam = (name, currentBuf) => {
+    // Auto-save current team to buffer before switching so no edits are lost
+    const bufToUse = currentBuf || romBuffer;
+    let buf = bufToUse;
+    if(dirty && selectedTeam && players) {
+      const curIdx = ALL_TEAMS.indexOf(selectedTeam);
+      buf = writeTeamAbilities(buf, curIdx, players);
+      players.forEach((p, si) => { buf = writePlayerName(buf, curIdx, si, p.first, p.last, p.jersey); });
+      setRomBuffer(buf);
+    }
     const idx = ALL_TEAMS.indexOf(name);
     setSelectedTeam(name);
-    const data = readTeam(romBuffer, idx);
+    const data = readTeam(buf, idx);
     setPlayers(data);
     setDirty(false);
+    histIdxRef.current = 0;
     setHistory([JSON.parse(JSON.stringify(data))]);
     setHistIdx(0);
+    // Clipboard intentionally preserved across team switches
   };
 
   const updatePlayer = (slotIdx, updated) => {
@@ -668,13 +704,65 @@ const App = () => {
     setDirty(true);
   };
 
-  const handleCopy = p => { setCopiedPlayer(JSON.parse(JSON.stringify(p))); showToast(`Copied ${p.first} ${p.last}`); };
+  const handleCopy = p => {
+    setClipboard({player: JSON.parse(JSON.stringify(p)), mode: 'copy', sourceTeam: selectedTeam});
+    showToast(`Copy: ${p.first} ${p.last} — click P on target`);
+  };
+  const handleTrade = p => {
+    setClipboard({player: JSON.parse(JSON.stringify(p)), mode: 'trade', sourceTeam: selectedTeam});
+    showToast(`Trade: ${p.first} ${p.last} — click P on target`);
+  };
   const handlePaste = slotIdx => {
-    if(!copiedPlayer) return;
+    if(!clipboard) return;
+    const { player: src, mode, sourceTeam } = clipboard;
     const target = players[slotIdx];
-    const pasted = {...JSON.parse(JSON.stringify(copiedPlayer)), slotIdx, pos:target.pos};
-    updatePlayer(slotIdx, pasted);
-    showToast(`Pasted onto ${target.pos}`);
+    if(mode === 'copy') {
+      const pasted = {...JSON.parse(JSON.stringify(src)), slotIdx, pos: target.pos};
+      updatePlayer(slotIdx, pasted);
+      showToast(`Pasted ${src.first} ${src.last} onto ${target.pos}`);
+      // keep clipboard active for multi-paste
+    } else {
+      // trade: incoming player goes to current team slot
+      const srcSlotIdx = src.slotIdx;
+      const crossTeam = sourceTeam !== selectedTeam;
+      if(!crossTeam && srcSlotIdx === slotIdx) { showToast('Same slot','warn'); return; }
+      const incoming = {...JSON.parse(JSON.stringify(src)), slotIdx, pos: target.pos};
+      if(crossTeam) {
+        // Write incoming to current team in state
+        const updatedCurrent = [...players];
+        updatedCurrent[slotIdx] = incoming;
+        // Save current team with incoming player to buffer
+        const destTeamIdx = ALL_TEAMS.indexOf(selectedTeam);
+        let buf = writeTeamAbilities(romBuffer, destTeamIdx, updatedCurrent);
+        updatedCurrent.forEach((p, si) => { buf = writePlayerName(buf, destTeamIdx, si, p.first, p.last, p.jersey); });
+        // Write displaced player back to source team in buffer
+        const srcTeamIdx = ALL_TEAMS.indexOf(sourceTeam);
+        const srcTeamPlayers = readTeam(buf, srcTeamIdx);
+        const displaced = {...JSON.parse(JSON.stringify(target)), slotIdx: srcSlotIdx, pos: srcTeamPlayers[srcSlotIdx].pos};
+        srcTeamPlayers[srcSlotIdx] = displaced;
+        buf = writeTeamAbilities(buf, srcTeamIdx, srcTeamPlayers);
+        srcTeamPlayers.forEach((p, si) => { buf = writePlayerName(buf, srcTeamIdx, si, p.first, p.last, p.jersey); });
+        setRomBuffer(buf);
+        setPlayers(updatedCurrent);
+        pushHistory(updatedCurrent);
+        setDirty(false);
+        setClipboard(null);
+        showToast(`Traded: ${incoming.first} ${incoming.last} → ${selectedTeam} ↔ ${displaced.first} ${displaced.last} → ${sourceTeam}`);
+      } else {
+        // Same-team trade: just swap in state
+        const displaced = {...JSON.parse(JSON.stringify(target)), slotIdx: srcSlotIdx, pos: players[srcSlotIdx].pos};
+        setPlayers(prev => {
+          const next = [...prev];
+          next[slotIdx] = incoming;
+          next[srcSlotIdx] = displaced;
+          pushHistory(next);
+          return next;
+        });
+        setDirty(true);
+        setClipboard(null);
+        showToast(`Traded: ${incoming.first} ${incoming.last} ↔ ${displaced.first} ${displaced.last}`);
+      }
+    }
   };
 
   const saveTeam = () => {
@@ -755,7 +843,7 @@ const App = () => {
                   <div key={i} className="search-result-item" onMouseDown={()=>{setSearchQuery('');setShowSearch(false);setView('edit');selectTeam(r.teamName);}}>
                     <span className="search-result-team">{r.teamName}</span>
                     <span className="search-result-pos">{r.p.pos}</span>
-                    <span className="search-result-name">{(r.p.first||'?')[0].toUpperCase()}. {r.p.last}</span>
+                    <span className="search-result-name">{r.p.first ? r.p.first[0].toUpperCase()+'.' : ''} {r.p.last}</span>
                     <span className="search-result-num">#{r.p.jersey}</span>
                   </div>
                 ))}
@@ -783,7 +871,7 @@ const App = () => {
           <button className="btn-sm" onClick={undo} disabled={histIdx<=0}>↩ UNDO</button>
           <button className="btn-sm" onClick={redo} disabled={histIdx>=history.length-1}>REDO ↪</button>
         </div>
-        {copiedPlayer&&<><div className="action-sep"/><span className="action-clip">📋 {copiedPlayer.first} {copiedPlayer.last}</span><button className="btn-sm" onClick={()=>setCopiedPlayer(null)} style={{fontSize:10,padding:'2px 6px'}}>CLR</button></>}
+        {clipboard&&<><div className="action-sep"/><span className="action-clip">{clipboard.mode==='trade'?'⇄':'📋'} {clipboard.player.first} {clipboard.player.last}{clipboard.sourceTeam!==selectedTeam?` (${clipboard.sourceTeam})`:''} [{clipboard.mode.toUpperCase()}]</span><button className="btn-sm" onClick={()=>setClipboard(null)} style={{fontSize:10,padding:'2px 6px'}}>CLR</button></>}
       </div>
 
       {/* BODY */}
@@ -846,8 +934,9 @@ const App = () => {
                       groupSlots={g.slots}
                       onUpdate={updatePlayer}
                       onMove={movePlayer}
-                      copiedPlayer={copiedPlayer}
+                      clipboard={clipboard}
                       onCopy={handleCopy}
+                      onTrade={handleTrade}
                       onPaste={handlePaste}
                     />
                   </div>

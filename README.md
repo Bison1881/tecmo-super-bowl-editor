@@ -58,6 +58,7 @@ All stats snap to the TSB scale: `6, 13, 19, 25, 31, 38, 44, 50, 56, 63, 69, 75,
 ### Tools
 - **Undo/Redo** — up to 30 steps per session
 - **Copy/Paste** — copy any player onto any slot, including across teams
+- **Trade** — swap two players within or across teams; the displaced player is written back to the source team's ROM slots
 - **Bulk stat adjust** — set a stat across an entire position group at once
 - **Player search** — search by name across all 28 teams
 - **Compare view** — side-by-side stat comparison of any two teams
@@ -136,6 +137,22 @@ Team order matches the ability data index:
 **Defensive players**
 - **PI** — Pass Interceptions: coverage and pick ability
 - **QK** — Quickness: has no measurable gameplay effect per community research
+
+---
+
+## Changelog
+
+### v1.1.0 — 2026-06-07
+- Added **T (trade) button** to every player row — sets trade mode on the clipboard
+- C/T are now always visible; **P appears on other rows only when the clipboard is active**
+- Copy mode (C) overwrites the target; trade mode (T) swaps both players
+- **Cross-team trades supported** — switching teams auto-saves to the buffer, the clipboard survives team switches, and the displaced player is written back to the source team's ROM slots on trade completion
+- Fixed a stale-closure bug on `pushHistory` — replaced `useCallback` with `useRef` for history index tracking, which was silently breaking paste and trade actions
+- Fixed `onTrade` passing `slotIdx` instead of the player object to the handler
+- Fixed the P button being clipped — control column widened to 112px
+- Improved `writePlayerName` slot-size detection — walks forward through all remaining slots instead of only checking the adjacent slot
+- Fixed blank first names for players with no first name in the ROM (e.g. JJ Birden) — returns an empty string instead of `?` so the field is editable
+- Action bar now shows the source team name when the clipboard holds a cross-team player
 
 ---
 
